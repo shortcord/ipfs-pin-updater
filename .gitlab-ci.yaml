@@ -1,0 +1,15 @@
+stages:
+    - build
+build:
+  image:
+    name: mcr.microsoft.com/dotnet/sdk:6.0
+  stage: build
+  script:
+    - dotnet publish --configuration Release --runtime linux-x64 --self-contained --output /publish_output
+  artifacts:
+    paths:
+      - /publish_output
+    expire_in: 1 week
+    when: on_success
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
