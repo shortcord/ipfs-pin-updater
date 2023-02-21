@@ -6,15 +6,21 @@ namespace ipfs_pin_util;
 class Program
 {
 
+    public enum PinItemType: int { Unknown, IPFS, IPNS }
+
     public class PinItem
     {
-        public int id { get; set; }
-        public string? cid { get; set; }
-        public string? oldCid { get; set; }
+        public int ID { get; set; }
+        public string? CID { get; set; }
+        public string? OldCID { get; set; }
+        public string? IpnsName { get; set; }
+        public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
+        public PinItemType PinItemType { get; set; } = PinItemType.Unknown;
 
         public override string ToString()
         {
-            return $"ID: {id} | CID: {cid} | Old CID: {oldCid}";
+            return $"ID: {ID} | Created: {Created} | Updated: {Updated} | PinItemType: {PinItemType} | CID: {CID} | Old CID: {OldCID} | IpnsName: {IpnsName}";
         }
     }
 
@@ -22,7 +28,7 @@ class Program
     {
         var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            .AddJsonFile("appsettings.json", optional: false);
         IConfiguration config = builder.Build();
 
         PinsConfig pinsConfig = new PinsConfig();
@@ -37,26 +43,42 @@ class Program
 
         foreach (var ipnsPin in pinsConfig.IPNS)
         {
-            string resolvedIpns = "";
+            string ipnsName = "";
             if (ipnsPin.StartsWith("/ipns/"))
             {
-                resolvedIpns = await ipfsClient.ResolveAsync(ipnsPin);
+                ipnsName = ipnsPin;
             }
             else
             {
-                resolvedIpns = await ipfsClient.ResolveAsync($"/ipns/{ipnsPin}");
+                ipnsName = $"/ipns/{ipnsPin}";
             }
 
-            Console.WriteLine($"IPNS Pin: {resolvedIpns}");
+            string resolvedIpns = await ipfsClient.ResolveAsync(ipnsName);
 
-            if (!pins.Exists(_ => _.cid == resolvedIpns))
+            Console.WriteLine($"IPNS Pin: {ipnsName} == {resolvedIpns}");
+
+            if (!pins.Exists(_ => _.IpnsName == ipnsName))
             {
                 Console.WriteLine($"Adding {resolvedIpns}");
                 var pin = new PinItem()
                 {
-                    cid = resolvedIpns
+                    CID = resolvedIpns,
+                    IpnsName = ipnsName,
+                    PinItemType = PinItemType.IPNS
                 };
                 pins.Insert(pin);
+            } else
+            {
+                var existingPin = pins.FindOne(_ => _.IpnsName == ipnsName);
+                if (existingPin.CID != resolvedIpns)
+                {
+                    Console.WriteLine($"IPNS Pin Updated from \"{existingPin.CID}\" to \"{resolvedIpns}\"");
+                    // Update the CID to point to the new one
+                    existingPin.OldCID = existingPin.CID;
+                    existingPin.CID = resolvedIpns;
+                    existingPin.Updated = DateTimeOffset.UtcNow;
+                    pins.Update(existingPin);
+                }
             }
         }
 
@@ -66,20 +88,50 @@ class Program
 
             Console.WriteLine($"IPFS Pin: {ipfsResolved}");
 
-            if (!pins.Exists(_ => _.cid == ipfsResolved))
+            if (!pins.Exists(_ => _.CID == ipfsResolved))
             {
                 Console.WriteLine($"Adding {ipfsResolved}");
                 var pin = new PinItem()
                 {
-                    cid = ipfsResolved
+                    CID = ipfsResolved,
+                    PinItemType = PinItemType.IPFS
                 };
                 pins.Insert(pin);
             }
         }
 
-        foreach (var pin in pins.FindAll())
+        var allPins = pins
+            .FindAll()
+            .ToArray();
+
+        for (int i = 0; i < allPins.Length; i++)
         {
+            var pin = allPins[i];
             Console.WriteLine(pin);
+            if (pin.PinItemType == PinItemType.IPFS)
+            {
+                Console.WriteLine($"Pinning: {pin.CID}");
+                await ipfsClient.Pin.AddAsync(pin.CID);
+                pin.Updated = DateTimeOffset.UtcNow;
+                pins.Update(pin);
+            }
+            else if (pin.PinItemType == PinItemType.IPNS)
+            {
+                // If we are updating the pin
+                if (!string.IsNullOrWhiteSpace(pin.OldCID))
+                {
+                    Console.WriteLine($"Updating pin: {pin.IpnsName}");
+                    await ipfsClient.DoCommandAsync("pin/update", CancellationToken.None, pin.OldCID, new string[] { $"arg={pin.CID}", "unpin=true" });
+                    pin.OldCID = "";
+                } else
+                {
+                    Console.WriteLine($"Pinning: {pin.IpnsName}");
+                    await ipfsClient.Pin.AddAsync(pin.CID);
+                }
+
+                pin.Updated = DateTimeOffset.UtcNow;
+                pins.Update(pin);
+            }
         }
     }
 }
