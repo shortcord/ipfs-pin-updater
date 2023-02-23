@@ -17,6 +17,7 @@ class Program
         public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
         public PinItemType PinItemType { get; set; } = PinItemType.Unknown;
+        public bool Delete { get; set; } = false;
 
         public override string ToString()
         {
@@ -26,10 +27,10 @@ class Program
 
     static async Task Main()
     {
-        var builder = new ConfigurationBuilder()
+        IConfiguration config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false);
-        IConfiguration config = builder.Build();
+            .AddJsonFile("appsettings.json", optional: false)
+            .Build();
 
         PinsConfig pinsConfig = new PinsConfig();
         config.Bind(nameof(PinsConfig), pinsConfig);
@@ -37,6 +38,18 @@ class Program
         var ipfsClient = new IpfsClient(config.GetConnectionString("IPFS"));
         var dbContext = new LiteDatabase(config.GetConnectionString("LiteDB"));
         var pins = dbContext.GetCollection<PinItem>();
+
+        {
+            var allPinsDelete = pins
+                .FindAll()
+                .ToArray();
+            
+            foreach (var pin in allPinsDelete)
+            {
+                pin.Delete = true;
+                pins.Update(pin);
+            }
+        }
 
         Console.WriteLine($"LiteDB Connection String: {config.GetConnectionString("LiteDB")}");
         Console.WriteLine($"IPFS API Connection String: {config.GetConnectionString($"IPFS")}");
@@ -70,6 +83,8 @@ class Program
             } else
             {
                 var existingPin = pins.FindOne(_ => _.IpnsName == ipnsName);
+                existingPin.Delete = false;
+
                 if (existingPin.CID != resolvedIpns)
                 {
                     Console.WriteLine($"IPNS Pin Updated from \"{existingPin.CID}\" to \"{resolvedIpns}\"");
@@ -97,6 +112,10 @@ class Program
                     PinItemType = PinItemType.IPFS
                 };
                 pins.Insert(pin);
+            } else
+            {
+                var existingPin = pins.FindOne(_ => _.CID == ipfsResolved);
+                existingPin.Delete = false;
             }
         }
 
@@ -107,30 +126,39 @@ class Program
         for (int i = 0; i < allPins.Length; i++)
         {
             var pin = allPins[i];
-            Console.WriteLine(pin);
-            if (pin.PinItemType == PinItemType.IPFS)
+            if (!pin.Delete)
             {
-                Console.WriteLine($"Pinning: {pin.CID}");
-                await ipfsClient.Pin.AddAsync(pin.CID);
-                pin.Updated = DateTimeOffset.UtcNow;
-                pins.Update(pin);
-            }
-            else if (pin.PinItemType == PinItemType.IPNS)
-            {
-                // If we are updating the pin
-                if (!string.IsNullOrWhiteSpace(pin.OldCID))
+                if (pin.PinItemType == PinItemType.IPFS)
                 {
-                    Console.WriteLine($"Updating pin: {pin.IpnsName}");
-                    await ipfsClient.DoCommandAsync("pin/update", CancellationToken.None, pin.OldCID, new string[] { $"arg={pin.CID}", "unpin=true" });
-                    pin.OldCID = "";
-                } else
-                {
-                    Console.WriteLine($"Pinning: {pin.IpnsName}");
-                    await ipfsClient.Pin.AddAsync(pin.CID);
+                    Console.WriteLine($"Pinning: {pin.CID}");
+                    await ipfsClient.Pin.AddAsync(pin.CID, recursive: true);
+                    pin.Updated = DateTimeOffset.UtcNow;
+                    pins.Update(pin);
                 }
+                else if (pin.PinItemType == PinItemType.IPNS)
+                {
+                    // If we are updating the pin
+                    if (!string.IsNullOrWhiteSpace(pin.OldCID))
+                    {
+                        Console.WriteLine($"Updating pin: {pin.IpnsName}");
+                        await ipfsClient.DoCommandAsync("pin/update", CancellationToken.None, pin.OldCID, new string[] { $"arg={pin.CID}", "unpin=true" });
+                        pin.OldCID = "";
+                    } else
+                    {
+                        Console.WriteLine($"Pinning: {pin.IpnsName}");
+                        await ipfsClient.Pin.AddAsync(pin.CID, recursive: true);
+                    }
 
-                pin.Updated = DateTimeOffset.UtcNow;
-                pins.Update(pin);
+                    pin.Updated = DateTimeOffset.UtcNow;
+                    pins.Update(pin);
+                }
+            } else
+            {
+                string toRemove = pin.CID.Remove(0, "/ipfs/".Length);
+                
+                Console.WriteLine($"Removing pin: {pin.CID}");
+                await ipfsClient.Pin.RemoveAsync(toRemove, recursive: true);
+                pins.Delete(pin.ID);
             }
         }
     }
