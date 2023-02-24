@@ -33,10 +33,11 @@ class Program
 
         var ipfsClient = new IpfsClient(config.GetConnectionString("IPFS"));
         var dbContext = new LiteDatabase(config.GetConnectionString("LiteDB"));
-        var pinDbContext = dbContext.GetCollection<PinItem>();
 
         Console.WriteLine($"LiteDB Connection String: {config.GetConnectionString("LiteDB")}");
         Console.WriteLine($"IPFS API Connection String: {config.GetConnectionString($"IPFS")}");
+
+        var pinDbContext = dbContext.GetCollection<PinItem>();
 
         {
             var allPinsDelete = pinDbContext
@@ -72,9 +73,12 @@ class Program
             {
                 Console.WriteLine("Pin doesn't exist in DB; Creating...");
 
+                // Remove /ipfs/ and /ipns/ from the start, they are the same length
+                var cidOnly = resolvedCID.Remove(0, "/ipfs/".Length);
+
                 var pin = new PinItem()
                 {
-                    CID = resolvedCID,
+                    CID = cidOnly,
                     rawName = pinRaw
                 };
 
