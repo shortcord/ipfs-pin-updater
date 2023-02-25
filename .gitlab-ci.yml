@@ -1,15 +1,33 @@
 stages:
     - build
 build:
+  stage: build
   image:
     name: mcr.microsoft.com/dotnet/sdk:6.0
-  stage: build
   script:
-    - dotnet publish --configuration Release --runtime linux-x64 --self-contained --output publish_output
+    - | 
+      dotnet publish \
+      --configuration Release \
+      --runtime linux-x64 \
+      --self-contained \
+      -p:PublishSingleFile=true \
+      -p:PublishReadyToRun=true \
+      -p:DebugType=embedded \
+      --output /tmp/publish_output
   artifacts:
+    name: "ipfs-pin-util-linux_x64"
     paths:
-      - publish_output
+      - publish_output/*
     expire_in: 1 week
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+deploy:
+  stage: deploy
+  image:
+    name: debian:11
+  before_script:
+    - apt update -y
+    - apt install -y rsync
+  script:
+    - rsync -e "ssh -i ${SSH_PRIVATE_KEY}" -rP /tmp/publish_output/ debian@ipfs-01.owo.systems:ipfs-pin-util/
