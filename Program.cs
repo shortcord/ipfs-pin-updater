@@ -10,14 +10,14 @@ class Program
         public int ID { get; set; }
         public string? CID { get; set; }
         public string? OldCID { get; set; }
-        public string? rawName { get; set; }
+        public string? RawName { get; set; }
         public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
         public bool Delete { get; set; } = false;
 
         public override string ToString()
         {
-            return $"ID: {ID} | Created: {Created} | Updated: {Updated} | CID: {CID} | Old CID: {OldCID} | IpnsName: {rawName}";
+            return $"ID: {ID} | Created: {Created} | Updated: {Updated} | CID: {CID} | Old CID: {OldCID} | IpnsName: {RawName}";
         }
     }
 
@@ -67,34 +67,34 @@ class Program
                 Console.WriteLine("Resolving IPNS to CID");
                 resolvedCID = await ipfsClient.ResolveAsync(resolvedCID);
                 Console.WriteLine($"{pinRaw} == {resolvedCID}");
-            }
+            };
 
-            if (!pinDbContext.Exists(_ => _.rawName == pinRaw))
+            // Remove /ipfs/ and /ipns/ from the start, they are the same length
+            string cidOnly = resolvedCID.Remove(0, "/ipfs/".Length);
+
+            if (!pinDbContext.Exists(_ => _.RawName == pinRaw))
             {
                 Console.WriteLine("Pin doesn't exist in DB; Creating...");
-
-                // Remove /ipfs/ and /ipns/ from the start, they are the same length
-                var cidOnly = resolvedCID.Remove(0, "/ipfs/".Length);
 
                 var pin = new PinItem()
                 {
                     CID = cidOnly,
-                    rawName = pinRaw
+                    RawName = pinRaw
                 };
 
                 pinDbContext.Insert(pin);
             }
 
-            var existingPin = pinDbContext.FindOne(_ => _.rawName == resolvedCID);
+            var existingPin = pinDbContext.FindOne(_ => _.RawName == resolvedCID);
 
             if (existingPin != null)
             {
                 existingPin.Delete = false;
 
-                if (existingPin.CID != resolvedCID)
+                if (existingPin.CID != cidOnly)
                 {
                     existingPin.OldCID = existingPin.CID;
-                    existingPin.CID = resolvedCID;
+                    existingPin.CID = cidOnly;
                 }
 
                 pinDbContext.Update(existingPin);
@@ -127,16 +127,13 @@ class Program
             {
                 var pinToPin = pinsToPin[i];
 
-                if (pinToPin.rawName.StartsWith("/ipfs/"))
+                if ((!string.IsNullOrWhiteSpace(pinToPin.OldCID)) &&
+                    (pinToPin.CID != pinToPin.OldCID))
                 {
-                    if ((!string.IsNullOrWhiteSpace(pinToPin.OldCID)) &&
-                        (pinToPin.CID != pinToPin.OldCID))
-                    {
-                        Console.WriteLine($"Updating {pinToPin.OldCID} to {pinToPin.CID}");
-                        await ipfsClient.DoCommandAsync("pin/update", CancellationToken.None, pinToPin.OldCID, new string[] { $"arg={pinToPin.CID}", "unpin=true" });
-                        pinToPin.OldCID = "";
-                        continue;
-                    }
+                    Console.WriteLine($"Updating {pinToPin.OldCID} to {pinToPin.CID}");
+                    await ipfsClient.DoCommandAsync("pin/update", CancellationToken.None, pinToPin.OldCID, new string[] { $"arg={pinToPin.CID}", "unpin=true" });
+                    pinToPin.OldCID = "";
+                    continue;
                 }
 
                 Console.WriteLine($"Pining {pinToPin.CID}");
