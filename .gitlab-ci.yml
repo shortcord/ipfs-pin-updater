@@ -29,6 +29,6 @@ deploy:
     name: debian:11
   before_script:
     - apt update -y
-    - apt install -y rsync openssh
+    - apt install -y rsync ssh
   script:
     - rsync -e "ssh -i ${SSH_PRIVATE_KEY}" -rP publish_output/ debian@ipfs-01.owo.systems:ipfs-pin-util/
