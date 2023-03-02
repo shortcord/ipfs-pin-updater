@@ -25,7 +25,7 @@ class Program
     {
         IConfiguration config = new ConfigurationBuilder()
 #if PKG_BUILD
-            .SetBasePath("/etc/ipfs-pin-updater", optional: false)
+            .SetBasePath("/etc/ipfs-pin-updater")
 #else
             .SetBasePath(Directory.GetCurrentDirectory())
 #endif
