@@ -1,0 +1,7 @@
+Package: ipfs-pin-updater
+Version: ${DEB_VERSION}
+Priority: optional
+Architecture: amd64
+Maintainer: Short Cord <short@shortcord.com>
+Description: IPFS Pin Updater Utility
+Homepage: https://gitlab.shortcord.com/shortcord/ipfs-pin-updater
