@@ -24,7 +24,7 @@ build-standalone:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-build-pkg-debian 1/2:
+build-pkg-debian:
   stage: build
   image:
     name: mcr.microsoft.com/dotnet/sdk:6.0
@@ -43,22 +43,23 @@ build-pkg-debian 1/2:
       cp -v publish_output_pkg/ipfs-pin-util package/usr/bin/ipfs-pin-util
       cp -v appsettings.pkg.json package/etc/ipfs-pin-updater/appsettings.json
       cp -v appsettings.custom.json-example package/etc/ipfs-pin-updater/appsettings.custom.json-example
+      cp -v control.template package/DEBIAN/control.template
   artifacts:
     name: "ipfs-pin-util-linux_x64-debsrc"
     paths:
-      - publish_output_pkg/*
+      - package/*
     expire_in: 1 week
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-package-deb-pkg:
+package-pkg-deb:
   variables:
     GIT_STRATEGY: none
   stage: package
   needs:
-    - "build-pkg-debian 1/2"
+    - "build-pkg-debian"
   dependencies:
-    - "build-pkg-debian 1/2"
+    - "build-pkg-debian"
   image:
     name: debian:11
   before_script:
@@ -66,7 +67,8 @@ package-deb-pkg:
     # Needed for envsubst
     - apt install -y gettext
   script:
-    - cat control.template | DEB_VERSION=$(TZ=UTC date +'%Y%m%d-%H%M') envsubst > package/DEBIAN/control
+    - cat package/DEBIAN/control.template | DEB_VERSION=$(TZ=UTC date +'%Y%m%d-%H%M') envsubst > package/DEBIAN/control
+    - rm package/DEBIAN/control.template
     - mkdir deb-build
     - dpkg-deb --build package/ deb-build/
   artifacts:
@@ -81,9 +83,9 @@ package-deb-pkg:
 #   variables:
 #     GIT_STRATEGY: none
 #   needs:
-#     - "package-deb-pkg"
+#     - "package-pkg-deb"
 #   dependencies:
-#     - "package-deb-pkg"
+#     - "package-pkg-deb"
 #   stage: deploy
 #   image:
 #     name: debian:11
