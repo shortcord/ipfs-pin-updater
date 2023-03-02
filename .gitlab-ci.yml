@@ -1,5 +1,6 @@
 stages:
     - build
+    - package
     - deploy
 build-standalone:
   stage: build
@@ -50,12 +51,14 @@ build-pkg-debian 1/2:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-build-pkg-debian 2/2:
+package-deb-pkg:
   variables:
     GIT_STRATEGY: none
-  stage: build
+  stage: package
+  needs:
+    - "build-pkg-debian 1/2"
   dependencies:
-    - build-pkg-debian 1/2
+    - "build-pkg-debian 1/2"
   image:
     name: debian:11
   before_script:
@@ -77,8 +80,10 @@ build-pkg-debian 2/2:
 # deploy:
 #   variables:
 #     GIT_STRATEGY: none
+#   needs:
+#     - "package-deb-pkg"
 #   dependencies:
-#     - build-pkg-debian 2/2
+#     - "package-deb-pkg"
 #   stage: deploy
 #   image:
 #     name: debian:11
