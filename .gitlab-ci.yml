@@ -71,6 +71,7 @@ package-pkg-deb:
     - rm package/DEBIAN/control.template
     - mkdir /package deb-build
     - cp -rv package/* /package
+    - find /package -name '.gitkeep' -type f -delete
     - dpkg-deb --build /package/ deb-build/
   artifacts:
     name: "ipfs-pin-util-linux_x64-deb"
