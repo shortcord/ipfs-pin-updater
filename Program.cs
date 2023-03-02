@@ -24,8 +24,14 @@ class Program
     static async Task Main()
     {
         IConfiguration config = new ConfigurationBuilder()
+#if PKG_BUILD
+            .SetBasePath("/etc/ipfs-pin-updater", optional: false)
+#else
             .SetBasePath(Directory.GetCurrentDirectory())
+#endif
             .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile("appsettings.custom.json", optional: true)
+            .AddEnvironmentVariables("SC_IPFS")
             .Build();
 
         PinsConfig pinsConfig = new PinsConfig();
