@@ -1,7 +1,7 @@
 stages:
     - build
     - deploy
-build:
+build-standalone:
   stage: build
   image:
     name: mcr.microsoft.com/dotnet/sdk:6.0
@@ -23,19 +23,74 @@ build:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-deploy:
-  stage: deploy
+build-pkg-debian 1/2:
+  stage: build
+  image:
+    name: mcr.microsoft.com/dotnet/sdk:6.0
+  script:
+    - |
+      dotnet publish \
+      --configuration Release \
+      --runtime linux-x64 \
+      --self-contained \
+      -p:PublishSingleFile=true \
+      -p:PublishReadyToRun=true \
+      -p:DebugType=embedded \
+      -p:DefineConstants="PKG_BUILD" \
+      --output publish_output_pkg
+    - |
+      cp -v publish_output_pkg/ipfs-pin-util package/usr/bin/ipfs-pin-util
+      cp -v appsettings.pkg.json package/etc/ipfs-pin-updater/appsettings.json
+      cp -v appsettings.custom.json-example package/etc/ipfs-pin-updater/appsettings.custom.json-example
+  artifacts:
+    name: "ipfs-pin-util-linux_x64-debsrc"
+    paths:
+      - publish_output_pkg/*
+    expire_in: 1 week
+    when: on_success
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+build-pkg-debian 2/2:
+  variables:
+    GIT_STRATEGY: none
+  stage: build
+  dependencies:
+    - build-pkg-debian 1/2
   image:
     name: debian:11
   before_script:
     - apt update -y
-    - apt install -y rsync openssh-client
-    - eval $(ssh-agent -s)
-    - chmod 400 "${SSH_PRIVATE_KEY}"
-    - ssh-add "${SSH_PRIVATE_KEY}"
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - cp "${SSH_KNOWN_HOSTS}" ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
+    # Needed for envsubst
+    - apt install -y gettext
   script:
-    - rsync -rP publish_output/ debian@ipfs-01.owo.systems:ipfs-pin-util/
+    - cat control.template | DEB_VERSION=$(TZ=UTC date +'%Y%m%d-%H%M') envsubst > package/DEBIAN/control
+    - mkdir deb-build
+    - dpkg-deb --build package/ deb-build/
+  artifacts:
+    name: "ipfs-pin-util-linux_x64-deb"
+    paths:
+      - deb-build/*
+    expire_in: 1 week
+    when: on_success
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+# deploy:
+#   variables:
+#     GIT_STRATEGY: none
+#   dependencies:
+#     - build-pkg-debian 2/2
+#   stage: deploy
+#   image:
+#     name: debian:11
+#   before_script:
+#     - apt update -y
+#     - apt install -y rsync openssh-client
+#     - eval $(ssh-agent -s)
+#     - chmod 400 "${SSH_PRIVATE_KEY}"
+#     - ssh-add "${SSH_PRIVATE_KEY}"
+#     - mkdir -p ~/.ssh
+#     - chmod 700 ~/.ssh
+#     - cp "${SSH_KNOWN_HOSTS}" ~/.ssh/known_hosts
+#     - chmod 644 ~/.ssh/known_hosts
+#   script:
+#     - rsync -rP publish_output/ debian@ipfs-01.owo.systems:ipfs-pin-util/
