@@ -69,8 +69,9 @@ package-pkg-deb:
   script:
     - cat package/DEBIAN/control.template | DEB_VERSION=$(TZ=UTC date +'%Y%m%d-%H%M') envsubst > package/DEBIAN/control
     - rm package/DEBIAN/control.template
-    - mkdir deb-build
-    - dpkg-deb --build package/ deb-build/
+    - mkdir /package deb-build
+    - cp -rv package/* /package
+    - dpkg-deb --build /package/ deb-build/
   artifacts:
     name: "ipfs-pin-util-linux_x64-deb"
     paths:
