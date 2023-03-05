@@ -134,3 +134,9 @@ deploy:
       --secret-access-key="${AWS_SECRET_ACCESS_KEY}" \
       --endpoint="${AWS_ENDPOINT}" \
       --bucket "${AWS_BUCKET_NAME}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - src/*
+        - package/*
+        - control.template
