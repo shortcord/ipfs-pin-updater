@@ -106,25 +106,31 @@ merge-request-test:
     when: on_success
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-# deploy:
-#   variables:
-#     GIT_STRATEGY: none
-#   needs:
-#     - "package-pkg-deb"
-#   dependencies:
-#     - "package-pkg-deb"
-#   stage: deploy
-#   image:
-#     name: debian:11
-#   before_script:
-#     - apt update -y
-#     - apt install -y rsync openssh-client
-#     - eval $(ssh-agent -s)
-#     - chmod 400 "${SSH_PRIVATE_KEY}"
-#     - ssh-add "${SSH_PRIVATE_KEY}"
-#     - mkdir -p ~/.ssh
-#     - chmod 700 ~/.ssh
-#     - cp "${SSH_KNOWN_HOSTS}" ~/.ssh/known_hosts
-#     - chmod 644 ~/.ssh/known_hosts
-#   script:
-#     - rsync -rP publish_output/ debian@ipfs-01.owo.systems:ipfs-pin-util/
+deploy:
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - "package-pkg-deb"
+  dependencies:
+    - "package-pkg-deb"
+  stage: deploy
+  image:
+    name: debian:11
+  before_script:
+    - apt update -y
+    - apt install -y curl lsb-release gnugp
+    - curl https://raw.githubusercontent.com/deb-s3/deb-s3/master/deb-s3-archive-keyring.gpg > /etc/apt/trusted.gpg.d/deb-s3-archive-keyring.gpg
+    - echo "deb http://deb-s3-repo.s3.us-east-2.amazonaws.com$(lsb_release -is | tr A-Z a-z) $(lsb_release -cs) main" > /etc/apt/sources.list.d/deb-s3.list
+    - apt update -y
+    - apt install -y deb-s3
+  script:
+    - gpg --allow-secret-key-import --import "${GPG_SEC_FILE}"
+    - gpg --list-keys
+    - |
+      deb-s3 \
+      upload /deb-build/*.deb \
+      --sign="${GPG_KEY_ID}" \
+      --access-key-id="${AWS_ACCESS_KEY_ID}" \
+      --secret-access-key="${AWS_SECRET_ACCESS_KEY}" \
+      --endpoint="${AWS_ENDPOINT}" \
+      --bucket "${AWS_BUCKET_NAME}"
