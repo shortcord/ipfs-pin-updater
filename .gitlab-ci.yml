@@ -2,6 +2,8 @@ stages:
     - build
     - package
     - deploy
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
 build-standalone:
   stage: build
   image:
@@ -81,6 +83,28 @@ package-pkg-deb:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+merge-request-test:
+  stage: build
+  image:
+    name: mcr.microsoft.com/dotnet/sdk:6.0
+  script:
+    - | 
+      dotnet publish \
+      --configuration Release \
+      --runtime linux-x64 \
+      --self-contained \
+      -p:PublishSingleFile=true \
+      -p:PublishReadyToRun=true \
+      -p:DebugType=embedded \
+      --output publish_output
+  artifacts:
+    name: "ipfs-pin-util-linux_x64"
+    paths:
+      - publish_output/*
+    expire_in: 1 week
+    when: on_success
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 # deploy:
 #   variables:
 #     GIT_STRATEGY: none
