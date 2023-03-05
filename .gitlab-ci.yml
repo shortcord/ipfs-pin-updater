@@ -128,7 +128,7 @@ deploy:
     - gpg --list-keys
     - |
       deb-s3 \
-      upload /deb-build/*.deb \
+      upload deb-build/*.deb \
       --sign="${GPG_KEY_ID}" \
       --access-key-id="${AWS_ACCESS_KEY_ID}" \
       --secret-access-key="${AWS_SECRET_ACCESS_KEY}" \
