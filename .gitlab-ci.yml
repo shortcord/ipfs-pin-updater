@@ -43,8 +43,8 @@ build-pkg-debian:
       --output publish_output_pkg
     - |
       cp -v publish_output_pkg/ipfs-pin-util package/usr/bin/ipfs-pin-util
-      cp -v appsettings.pkg.json package/etc/ipfs-pin-updater/appsettings.json
-      cp -v appsettings.custom.json-example package/etc/ipfs-pin-updater/appsettings.custom.json-example
+      cp -v src/appsettings.pkg.json package/etc/ipfs-pin-updater/appsettings.json
+      cp -v src/appsettings.custom.json-example package/etc/ipfs-pin-updater/appsettings.custom.json-example
       cp -v control.template package/DEBIAN/control.template
   artifacts:
     name: "ipfs-pin-util-linux_x64-debsrc"
