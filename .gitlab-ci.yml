@@ -46,6 +46,7 @@ build-pkg-debian:
       cp -v src/appsettings.pkg.json package/etc/ipfs-pin-updater/appsettings.json
       cp -v src/appsettings.custom.json-example package/etc/ipfs-pin-updater/appsettings.custom.json-example
       cp -v control.template package/DEBIAN/control.template
+      find package/ -name .gitkeep -print -delete
   artifacts:
     name: "ipfs-pin-util-linux_x64-debsrc"
     paths:
