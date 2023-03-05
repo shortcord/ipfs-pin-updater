@@ -1,4 +1,4 @@
-![Pipeline Status on Gitlab](https://gitlab.shortcord.com/shortcord/ipfs-pin-updater/badges/main/pipeline.svg?style=flat-square)
+[![Pipeline Status on Gitlab](https://gitlab.shortcord.com/shortcord/ipfs-pin-updater/badges/main/pipeline.svg?style=flat-square)](https://gitlab.shortcord.com/shortcord/ipfs-pin-updater/-/pipelines)
 
 # IPFS Pin Updater
 Small Dotnet application that updates IPFS and IPNS pins.
