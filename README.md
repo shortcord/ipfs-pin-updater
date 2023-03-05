@@ -1,8 +1,11 @@
+![Pipeline Status on Gitlab](https://gitlab.shortcord.com/shortcord/ipfs-pin-updater/badges/main/pipeline.svg?style=flat-square)
+
 # IPFS Pin Updater
 Small Dotnet application that updates IPFS and IPNS pins.
 
+
 ## Installation (Binaries)
-To install from binaries, donwload the latest main artifact [here](https://gitlab.shortcord.com/api/v4/projects/196/jobs/artifacts/main/download?job=build-standalone) and extract and run.
+To install from binaries, download the latest main artifact [here](https://gitlab.shortcord.com/api/v4/projects/196/jobs/artifacts/main/download?job=build-standalone) and extract and run.
 
 ## Installation (Debian Repo)
 1) Import the GPG key from [keys.openpgp.org](https://keys.openpgp.org/search?q=short%2Bpackaging%40shortcord.com)
