@@ -120,7 +120,7 @@ deploy:
     - apt update -y
     - apt install -y curl lsb-release gpg
     - curl https://raw.githubusercontent.com/deb-s3/deb-s3/master/deb-s3-archive-keyring.gpg > /etc/apt/trusted.gpg.d/deb-s3-archive-keyring.gpg
-    - echo "deb http://deb-s3-repo.s3.us-east-2.amazonaws.com$(lsb_release -is | tr A-Z a-z) $(lsb_release -cs) main" > /etc/apt/sources.list.d/deb-s3.list
+    - echo "deb http://deb-s3-repo.s3.us-east-2.amazonaws.com/$(lsb_release -is | tr A-Z a-z) $(lsb_release -cs) main" > /etc/apt/sources.list.d/deb-s3.list
     - apt update -y
     - apt install -y deb-s3
   script:
