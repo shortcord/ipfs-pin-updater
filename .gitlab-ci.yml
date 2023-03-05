@@ -26,6 +26,10 @@ build-standalone:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - src/*
+        - package/*
+        - control.template
 build-pkg-debian:
   stage: build
   image:
@@ -55,6 +59,10 @@ build-pkg-debian:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+          - src/*
+          - package/*
+          - control.template
 package-pkg-deb:
   variables:
     GIT_STRATEGY: none
@@ -84,6 +92,10 @@ package-pkg-deb:
     when: on_success
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+          - src/*
+          - package/*
+          - control.template
 merge-request-test:
   stage: build
   image:
