@@ -1,12 +1,13 @@
 {
     "#": "Rename this file to appsettings.custom.json and edit to your liking",
-    "PinsConfig": {
+    "IPFSConfig": {
+        "Username": "",
+        "Password": "",
+        "Api": "http://localhost:5001",
+        "UnixDomainSocketLocation": "",
         "Pins": [
             "/ipns/my.ipns.domain.tld",
             "/ipfs/QmX4QroyksY6if78nP8osPzEh9YARfJ7g2ESp3dy3XX5H5"
         ]
-    },
-    "ConnectionStrings": {
-        "IPFS": "http://localhost:5001"
     }
 }

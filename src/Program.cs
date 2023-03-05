@@ -1,27 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Ipfs.Http;
 using LiteDB;
+using System.Net.Sockets;
 
 namespace ipfs_pin_util;
 class Program
 {
-    public class PinItem
-    {
-        public int ID { get; set; }
-        public string? CID { get; set; }
-        public string? OldCID { get; set; }
-        public string? RawName { get; set; }
-        public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
-        public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
-        public bool Delete { get; set; } = false;
-
-        public override string ToString()
-        {
-            return $"ID: {ID} | Created: {Created} | Updated: {Updated} | CID: {CID} | Old CID: {OldCID} | IpnsName: {RawName}";
-        }
-    }
-
-    static async Task Main()
+    static async Task<int> Main()
     {
         IConfiguration config = new ConfigurationBuilder()
 #if PKG_BUILD
@@ -34,14 +19,50 @@ class Program
             .AddEnvironmentVariables("SC_IPFS")
             .Build();
 
-        PinsConfig pinsConfig = new PinsConfig();
-        config.Bind(nameof(PinsConfig), pinsConfig);
+        IPFSConfig ipfsConfig = new IPFSConfig();
+        config.Bind(nameof(IPFSConfig), ipfsConfig);
 
-        var ipfsClient = new IpfsClient(config.GetConnectionString("IPFS"));
         var dbContext = new LiteDatabase(config.GetConnectionString("LiteDB"));
 
+        IpfsClient? ipfsClient = null;
+
+        if (!string.IsNullOrWhiteSpace(ipfsConfig.UnixDomainSocketLocation))
+        {
+            if (File.Exists(ipfsConfig.UnixDomainSocketLocation))
+            {
+                Console.WriteLine("IPFS API Connection String: {0}", ipfsConfig.UnixDomainSocketLocation);
+                ipfsClient = new IpfsClient()
+                {
+                    HttpMessageHandler = new SocketsHttpHandler
+                    {
+                        ConnectCallback = async (context, token) =>
+                        {
+                            var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
+                            var endpoint = new UnixDomainSocketEndPoint(ipfsConfig.UnixDomainSocketLocation);
+                            await socket.ConnectAsync(endpoint);
+                            return new NetworkStream(socket, ownsSocket: true);
+                        }
+                    }
+                };
+            } else
+            {
+                Console.WriteLine($"{ipfsConfig.UnixDomainSocketLocation} doesn't exist.");
+                return 1;
+            }
+        } else
+        {
+            Console.WriteLine("IPFS API Connection String: {0}", ipfsConfig.Api);
+            ipfsClient = new IpfsClient(ipfsConfig.Api);
+            if (ipfsConfig.UseBasicAuth)
+            {
+                ipfsClient.HttpMessageHandler = new BasicAuthHttpClientHandler(ipfsConfig.Username, ipfsConfig.Password);
+            }
+        }
+
         Console.WriteLine($"LiteDB Connection String: {config.GetConnectionString("LiteDB")}");
-        Console.WriteLine($"IPFS API Connection String: {config.GetConnectionString($"IPFS")}");
+
+        Console.WriteLine($"{await ipfsClient.IdAsync()}");
+        return 0;
 
         var pinDbContext = dbContext.GetCollection<PinItem>();
 
@@ -57,7 +78,7 @@ class Program
             }
         }
 
-        foreach (var pinRaw in pinsConfig.Pins)
+        foreach (var pinRaw in ipfsConfig.Pins)
         {
             if (!pinRaw.StartsWith("/ipns/") &&
                 !pinRaw.StartsWith("/ipfs/"))

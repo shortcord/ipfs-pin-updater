@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/ipfs-pin-util.csproj",
+                "${workspaceFolder}/src/ipfs-pin-util.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/ipfs-pin-util.csproj",
+                "${workspaceFolder}/src/ipfs-pin-util.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/ipfs-pin-util.csproj"
+                "${workspaceFolder}/src/ipfs-pin-util.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
